@@ -71,8 +71,8 @@ def labeltensor(alist):
         labelist.append(int(aa.split("XPTM")[1]))
     return torch.tensor(labelist)
 
-lr = 3e-4 #3e-4
-weight_decay=0. #1e-7
+lr = 3e-4 
+weight_decay=0. 
 gamma = 0.7
 seed = 12345
 seed_everything(seed)
@@ -96,14 +96,11 @@ import sys
 model =UNETR(
     img_shape=image_size, input_dim=4, output_dim=2, dropout=0.25
     )
-
-#import pdb; pdb.set_trace()
 print(model)
 decay_epoch=epochs//2
 model = model.to(device)
 optimgen = torch.optim.Adam(model.parameters(), lr = lr, betas=(0.5, 0.99), weight_decay=weight_decay)
 criterion_sub = nn.CrossEntropyLoss().to(device)
-#criterion_sub = nn.CrossEntropyLoss(weight=torch.tensor([0.1, 0.9])).to(device)
 dice_loss = DiceLoss(num_classes)
 steps=int(epochs/10)
 scheduler = torch.optim.lr_scheduler.LambdaLR(optimgen, lr_lambda=LambdaLR(epochs, 0, decay_epoch).step)
@@ -113,7 +110,6 @@ lambdace=0.9
 
 trg_path="./data/processed128x128x32/isles2018_trg9"
 trgset = tio.SubjectsDataset(make_sublist_isles2018(trg_path), transform = transformisles(1))
-#import pdb; pdb.set_trace()
 if linux:
     loader = DataLoader(trgset, batch_size=batchsize, shuffle=True, drop_last=True, num_workers=1)
 else:
@@ -144,7 +140,6 @@ for epoch in range(epochs):
         gseg[gseg>0.5]=1
         gseg[gseg<1]=0
         gseg=gseg.long()
-        #import pdb; pdb.set_trace()
         stack_vol_=stack_vol.to(device)
         gseg_=gseg.to(device)
         optimgen.zero_grad()
@@ -152,7 +147,6 @@ for epoch in range(epochs):
         celoss = criterion_sub(oseg, gseg_[0])
         dscloss= dice_loss(oseg, gseg_[0])
         lossgen=celoss +dscloss
-        #lossgen=dscloss
         lossgen.backward()
         optimgen.step()
         totalloss+=lossgen.item()
@@ -171,8 +165,8 @@ for epoch in range(epochs):
             f2rem=glob.glob("results/UNETR_model9*.pt")
             for ff in f2rem:
                 os.remove(ff)            
-            torch.save(model.state_dict(), 'results/UNETR_model9_{}.pt'.format(str(epoch+epochstart)))
-            f=open("results/UNETR_model9.txt", "a") 
+            torch.save(model.state_dict(), 'results/UNETR_{}.pt'.format(str(epoch+epochstart)))
+            f=open("results/UNETR.txt", "a") 
             f.write('Epoch: %d Validation : mean_dice : %f +-%f mean_hd95 : %f +-%f mean_iou : %f +-%f mean_precision : %f +-%f mean_recall : %f +-%f \n' % (epoch, mean_dice, std_dice, mean_hd95, std_hd95, mean_iou, std_iou, mean_precision, std_precision, mean_recall, std_recall))
             f.close()
         elif cnt<autostop:

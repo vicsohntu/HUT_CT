@@ -62,15 +62,11 @@ def labeltensor(alist):
         labelist.append(int(aa.split("XPTM")[1]))
     return torch.tensor(labelist)
 
-
-
 def znormalize(data, mean, std):
     norm_data = (data - mean) / std
     return norm_data.float()
-
-# best 0.73 , lr =3e-4, wd=1e-7, dropout=0.25,tr=0.25, ce weight=0.1,0.9, gtsum>8, aug=15deg, 1.-1.1, linear, ce_loss only
-lr = 3e-4 #3e-4
-weight_decay=0. #1e-7
+lr = 3e-4 
+weight_decay=0. 
 gamma = 0.7
 seed = 12345
 seed_everything(seed)
@@ -86,20 +82,14 @@ linux=True
 autostop=124
 cnt=0
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
-#device = "cpu"
 print(device)
 ATLAS_MEAN= 30.20063; ATLAS_SD= 35.221165
 model =SUNET2d_Deep(
     in_channels=4, out_channels=2, dropout=0.15
     )
 
-abc=torch.randn(1,4, 256,256)
-t=model(abc)
-#import pdb; pdb.set_trace()
-print(model)
 decay_epoch=epochs//2
 model = model.to(device)
-
 optimgen = torch.optim.Adam(model.parameters(), lr = lr, betas=(0.5, 0.99), weight_decay=weight_decay)
 criterion_sub = nn.CrossEntropyLoss().to(device)
 criterion_sub = nn.CrossEntropyLoss(weight=torch.tensor([0.1, 0.9])).to(device)
@@ -111,10 +101,8 @@ scheduler = torch.optim.lr_scheduler.LambdaLR(optimgen, lr_lambda=LambdaLR(epoch
 lambdaseg=0.5
 lambdace=0.5
 lambdacls=1e-4
-#trg_path="./data/atlasr2_mni/atlasr12/trg_norm"
 trg_path="./data/isles2018_trg9"
 trgset = tio.SubjectsDataset(make_sublist_isles2018(trg_path), transform = transformisles(1))
-#import pdb; pdb.set_trace()
 if linux:
     loader = DataLoader(trgset, batch_size=batchsize, shuffle=True, drop_last=True, num_workers=4)
 else:
@@ -123,7 +111,6 @@ tst_path="./data/isles2018_tst9"
 tstset = tio.SubjectsDataset(make_sublist_isles2018(tst_path), transform = transformisles(0))
 
 tstloader = DataLoader(tstset, batch_size=1, shuffle=False, drop_last=True)
-#import pdb; pdb.set_trace()
 samplesize=int(len(trgset)/batchsize)
 print("Dataset size: ", samplesize)
 if epochstart==0:
@@ -154,9 +141,7 @@ for epoch in range(epochs):
     model.train()
     starttime=time.time()
     totalloss=0.
-    batchrun=0.
-
-    
+    batchrun=0.   
     for i_batch, sample in enumerate(loader):
         cbvvol = sample['cbvvol']['data']
         cbfvol = sample['cbfvol']['data']
@@ -186,15 +171,9 @@ for epoch in range(epochs):
             lossgen3=aggregate_loss(oseg3, gseg3)
             lossgen2=aggregate_loss(oseg2, gseg2)
             lossgen=lossgen5+lossgen4+lossgen3+lossgen2            
-##            celoss = criterion_sub(oseg, gseg_[0])
-##            dscloss= dice_loss(oseg, gseg_[0])
-##            lossgen=ceweight*celoss +dscweight*dscloss
             lossgen.backward()
             optimgen.step()
             totalloss+=lossgen.item()
-            #dsctloss+=dscloss.item()
-            #cetloss+=celoss.item()
-        #mean_dice, mean_hd95, mean_iou, mean_precision, mean_recall=metric_eval_cvitcls_isles2018(model, tstloader, norm=False, device=device, num_classes=num_classes)
         batchrun=batchrun+(i_batch+1)*depth
         print("Iter: ", i_batch, "Current ave loss: ", totalloss/(batchrun))
     elapsedtime=time.time()-starttime
@@ -203,22 +182,19 @@ for epoch in range(epochs):
     cetlossd=cetloss-cetlossp
     cetlossp=cetloss
     if dsctlossd>0.0 and cetlossd>0.0:
-        #dscweight=dsctlossd/(dsctlossd+cetlossd)
-        #ceweight=cetlossd/(dsctlossd+cetlossd)
         ceweight=dsctlossd/(dsctlossd+cetlossd)
         dscweight=cetlossd/(dsctlossd+cetlossd)        
     print("Epoch: ", epoch+epochstart, " Loss Average: " , totalloss/(batchrun),  " DSC weight ", dscweight, " CE weight ", ceweight, " Time Taken: ", elapsedtime) 
     if epoch%10==0:
         with torch.no_grad():
             mean_dice, mean_hd95, mean_iou, mean_precision, mean_recall, _,_,_,_,_=metric_eval_fcnn_isles2018_deep(model, tstloader, norm=False, device=device, num_classes=num_classes)
-            #mean_dice, mean_hd95, mean_iou, mean_precision, mean_recall=metric_eval(model, tstloader, norm=False, device=device, num_classes=num_classes)
-        original_stdout =sys.stdout
+         original_stdout =sys.stdout
         print('Validation : mean_dice : %f mean_hd95 : %f mean_iou : %f mean_precision : %f mean_recall : %f' % (mean_dice, mean_hd95, mean_iou, mean_precision, mean_recall))
         if current_dice<mean_dice:
             cnt=0
             current_dice=mean_dice
-            torch.save(model.state_dict(), 'results/nnUNet_model9.pt')
-            f=open("results/nnUNet_model9.txt", "a") 
+            torch.save(model.state_dict(), 'results/nnUNet.pt')
+            f=open("results/nnUNet.txt", "a") 
             f.write('Validation epoch %d : mean_dice : %f mean_hd95 : %f mean_iou : %f mean_precision : %f mean_recall : %f \n' % (epoch, mean_dice, mean_hd95, mean_iou, mean_precision, mean_recall))
             f.close()
         elif cnt<autostop:

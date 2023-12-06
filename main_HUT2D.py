@@ -82,19 +82,13 @@ linux=True
 autostop=124
 cnt=0
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
-#device = "cpu"
 print(device)
 ATLAS_MEAN= 30.20063; ATLAS_SD= 35.221165
 model =CVITUNETUP2DCHUNK(
     in_channels=4, out_channels=2, dropout=0.15, tr_dropout=0.25 
     )
-
-abc=torch.randn(1,4, 256,256)
-t,aa,bb=model(abc)
-print(model)
 decay_epoch=epochs//4
 model = model.to(device)
-
 optimgen = torch.optim.Adam(model.parameters(), lr = lr, betas=(0.5, 0.99), weight_decay=weight_decay)
 criterion_sub = nn.CrossEntropyLoss(weight=torch.tensor([0.15, 0.85])).to(device)
 criterion_foc = FocalLoss(gamma=2, reduction='mean').to(device)
@@ -187,8 +181,8 @@ for epoch in range(epochs):
         if current_dice<mean_dice:
             cnt=0
             current_dice=mean_dice
-            torch.save(model.state_dict(), 'results/CVITUNETUP2DmixCLS_model9b.pt')
-            f=open("results/CVITUNETUP2DmixCLS_model9b.txt", "a") 
+            torch.save(model.state_dict(), 'results/CVITUNETUP2D.pt')
+            f=open("results/CVITUNETUP2D.txt", "a") 
             f.write('Validation epoch %d : mean_dice : %f mean_hd95 : %f mean_iou : %f mean_precision : %f mean_recall : %f \n' % (epoch, mean_dice, mean_hd95, mean_iou, mean_precision, mean_recall))
             f.close()
         elif cnt<autostop:

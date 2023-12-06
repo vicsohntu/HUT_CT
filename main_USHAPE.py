@@ -67,10 +67,8 @@ def labeltensor(alist):
 def znormalize(data, mean, std):
     norm_data = (data - mean) / std
     return norm_data.float()
-
-# best 0.73 , lr =3e-4, wd=1e-7, dropout=0.25,tr=0.25, ce weight=0.1,0.9, gtsum>8, aug=15deg, 1.-1.1, linear, ce_loss only
-lr = 3e-4 #3e-4
-weight_decay=1e-7
+lr = 3e-4 
+weight_decay=0.
 gamma = 0.7
 seed = 12345
 seed_everything(seed)
@@ -92,14 +90,8 @@ ATLAS_MEAN= 30.20063; ATLAS_SD= 35.221165
 model =Modified3DUNet(
     in_channels=4, n_classes=2, base_n_filter = 20
     )
-
-abc=torch.randn(1,4, 256,256, 32)
-t=model(abc)
-#import pdb; pdb.set_trace()
-print(model)
 decay_epoch=epochs//2
 model = model.to(device)
-
 optimgen = torch.optim.Adam(model.parameters(), lr = lr, betas=(0.5, 0.99), weight_decay=weight_decay)
 criterion_sub = nn.CrossEntropyLoss().to(device)
 criterion_sub = nn.CrossEntropyLoss(weight=torch.tensor([0.1, 0.9])).to(device)
@@ -111,19 +103,15 @@ scheduler = torch.optim.lr_scheduler.LambdaLR(optimgen, lr_lambda=LambdaLR(epoch
 lambdaseg=0.5
 lambdace=0.5
 lambdacls=1e-4
-#trg_path="./data/atlasr2_mni/atlasr12/trg_norm"
 trg_path="./data/processed128x128x32/isles2018_trg2"
 trgset = tio.SubjectsDataset(make_sublist_isles2018(trg_path), transform = transformisles(1))
-#import pdb; pdb.set_trace()
 if linux:
     loader = DataLoader(trgset, batch_size=batchsize, shuffle=True, drop_last=True, num_workers=1)
 else:
     loader = DataLoader(trgset, batch_size=batchsize, shuffle=True, drop_last=True) #windows
 tst_path="./data/processed128x128x32/isles2018_tst2"
 tstset = tio.SubjectsDataset(make_sublist_isles2018(tst_path), transform = transformisles(0))
-
 tstloader = DataLoader(tstset, batch_size=1, shuffle=False, drop_last=True)
-#import pdb; pdb.set_trace()
 samplesize=int(len(trgset)/batchsize)
 print("Dataset size: ", samplesize)
 if epochstart==0:
@@ -143,7 +131,6 @@ for epoch in range(epochs):
         stack_vol=torch.concat((cbvvol,cbfvol,mttvol,tmaxvol),dim=1)
         depth=tmaxvol.shape[4]
         gseg = sample['segvol']['data'].long()
-        #import pdb; pdb.set_trace()
         stack_vol_=stack_vol.to(device)
         gseg_=gseg.to(device)
         optimgen.zero_grad()
@@ -151,28 +138,24 @@ for epoch in range(epochs):
         celoss = criterion_sub(oseg, gseg_[0])
         dscloss= dice_loss(oseg, gseg_[0])
         lossgen=celoss +dscloss
-        #lossgen=dscloss
         lossgen.backward()
         optimgen.step()
         totalloss+=lossgen.item()
-        #mean_dice, mean_hd95, mean_iou, mean_precision, mean_recall=metric_eval_cvitcls_isles2018(model, tstloader, norm=False, device=device, num_classes=num_classes)
         batchrun=batchrun+(i_batch+1)*depth
         print("Iter: ", i_batch, "Current ave loss: ", totalloss/(batchrun),  "ce loss: ", celoss.item())
     elapsedtime=time.time()-starttime
     print("Epoch: ", epoch+epochstart, " Loss Average: " , totalloss/(batchrun), " Time Taken: ", elapsedtime) 
     if epoch%5==0:
         with torch.no_grad():
-            #mean_dice, mean_hd95, mean_iou, mean_precision, mean_recall=metric_eval_fcnn_isles2018(model, tstloader, norm=False, device=device, num_classes=num_classes)
             mean_dice, mean_hd95, mean_iou, mean_precision, mean_recall, std_dice, std_hd95, std_iou, std_precision, std_recall =metric_eval_3dunet_isles2018_slice(model, tstloader, norm=False, device=device, num_classes=num_classes)
-            #mean_dice, mean_hd95, mean_iou, mean_precision, mean_recall=metric_eval(model, tstloader, norm=False, device=device, num_classes=num_classes)
         original_stdout =sys.stdout
         print('Validation : mean_dice : %f +-%f mean_hd95 : %f +-%f mean_iou : %f +-%f mean_precision : %f +-%f mean_recall : %f +-%f' % (mean_dice, std_dice, mean_hd95, std_hd95, mean_iou, std_iou, mean_precision, std_precision, mean_recall, std_recall))
         if current_dice<mean_dice:
             print("Writing ... ")
             cnt=0
             current_dice=mean_dice
-            torch.save(model.state_dict(), 'results/ushapednet_model2.pt')
-            f=open("results/ushapednet_model2txt", "a") 
+            torch.save(model.state_dict(), 'results/ushapednet.pt')
+            f=open("results/ushapednet.txt", "a") 
             f.write('Testing performance in best val model: : mean_dice : %f +-%f mean_hd95 : %f +-%f mean_iou : %f +-%f mean_precision : %f +-%f mean_recall : %f +-%f' % (mean_dice, std_dice, mean_hd95, std_hd95, mean_iou, std_iou, mean_precision, std_precision, mean_recall, std_recall))
             f.close()
         elif cnt<autostop:

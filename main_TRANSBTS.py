@@ -89,19 +89,17 @@ cnt=0
 current_dice=0.
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-#device = "cpu"
 print(device)
 import sys
 
 _, model = TransBTS(dataset='isles', _conv_repr=True, _pe_type="learned")
 
-#import pdb ; pdb.set_trace()
+
 print(model)
 decay_epoch=epochs//2
 model = model.to(device)
 optimgen = torch.optim.Adam(model.parameters(), lr = lr, betas=(0.5, 0.99), weight_decay=weight_decay)
 criterion_sub = nn.CrossEntropyLoss().to(device)
-#criterion_sub = nn.CrossEntropyLoss(weight=torch.tensor([0.1, 0.9])).to(device)
 dice_loss = DiceLoss(num_classes)
 steps=int(epochs/10)
 scheduler = torch.optim.lr_scheduler.LambdaLR(optimgen, lr_lambda=LambdaLR(epochs, 0, decay_epoch).step)
@@ -110,7 +108,6 @@ lambdaseg=0.1
 lambdace=0.9
 trg_path="./data/processed128x128x128/isles2018_trg9"
 trgset = tio.SubjectsDataset(make_sublist_isles2018_2(trg_path), transform = transformisles(1))
-#import pdb; pdb.set_trace()
 if linux:
     loader = DataLoader(trgset, batch_size=batchsize, shuffle=True, drop_last=True, num_workers=1)
 else:
@@ -136,7 +133,6 @@ for epoch in range(epochs):
         tmaxvol = sample['tmaxvol']['data']
         stack_vol=torch.concat((cbvvol,cbfvol,mttvol,tmaxvol),dim=1)
         gseg = sample['segvol']['data'].long()
-        #import pdb; pdb.set_trace()
         stack_vol_=stack_vol.to(device)
         gseg_=gseg.to(device)
         optimgen.zero_grad()
@@ -144,7 +140,6 @@ for epoch in range(epochs):
         celoss = criterion_sub(oseg, gseg_[0])
         dscloss= dice_loss(oseg, gseg_[0])
         lossgen=celoss +dscloss
-        #lossgen=dscloss
         lossgen.backward()
         optimgen.step()
         totalloss+=lossgen.item()

@@ -62,14 +62,11 @@ def labeltensor(alist):
         labelist.append(int(aa.split("XPTM")[1]))
     return torch.tensor(labelist)
 
-
-
 def znormalize(data, mean, std):
     norm_data = (data - mean) / std
     return norm_data.float()
 
-# best 0.73 , lr =3e-4, wd=1e-7, dropout=0.25,tr=0.25, ce weight=0.1,0.9, gtsum>8, aug=15deg, 1.-1.1, linear, ce_loss only
-lr = 3e-4 #3e-4
+lr = 3e-4 
 weight_decay=0.
 gamma = 0.7
 seed = 12345
@@ -86,16 +83,11 @@ linux=False
 autostop=124
 cnt=0
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-#device = "cpu"
 print(device)
 ATLAS_MEAN= 30.20063; ATLAS_SD= 35.221165
 model =Unet(
     c=4, num_classes=2
     )
-
-abc=torch.randn(1,4, 256,256, 32)
-t=model(abc)
-#import pdb; pdb.set_trace()
 print(model)
 decay_epoch=epochs//2
 model = model.to(device)
@@ -111,10 +103,8 @@ scheduler = torch.optim.lr_scheduler.LambdaLR(optimgen, lr_lambda=LambdaLR(epoch
 lambdaseg=0.5
 lambdace=0.5
 lambdacls=1e-4
-#trg_path="./data/atlasr2_mni/atlasr12/trg_norm"
 trg_path="./data/processed128x128x32/isles2018_trg2"
 trgset = tio.SubjectsDataset(make_sublist_isles2018(trg_path), transform = transformisles(1))
-#import pdb; pdb.set_trace()
 if linux:
     loader = DataLoader(trgset, batch_size=batchsize, shuffle=True, drop_last=True, num_workers=1)
 else:
@@ -123,7 +113,6 @@ tst_path="./data/processed128x128x32/isles2018_tst2"
 tstset = tio.SubjectsDataset(make_sublist_isles2018(tst_path), transform = transformisles(0))
 
 tstloader = DataLoader(tstset, batch_size=1, shuffle=False, drop_last=True)
-#import pdb; pdb.set_trace()
 samplesize=int(len(trgset)/batchsize)
 print("Dataset size: ", samplesize)
 if epochstart==0:
@@ -143,7 +132,6 @@ for epoch in range(epochs):
         stack_vol=torch.concat((cbvvol,cbfvol,mttvol,tmaxvol),dim=1)
         depth=tmaxvol.shape[4]
         gseg = sample['segvol']['data'].long()
-        #import pdb; pdb.set_trace()
         stack_vol_=stack_vol.to(device)
         gseg_=gseg.to(device)
         optimgen.zero_grad()
@@ -151,20 +139,16 @@ for epoch in range(epochs):
         celoss = criterion_sub(oseg, gseg_[0])
         dscloss= dice_loss(oseg, gseg_[0])
         lossgen=celoss +dscloss
-        #lossgen=dscloss
         lossgen.backward()
         optimgen.step()
         totalloss+=lossgen.item()
-        #mean_dice, mean_hd95, mean_iou, mean_precision, mean_recall=metric_eval_cvitcls_isles2018(model, tstloader, norm=False, device=device, num_classes=num_classes)
         batchrun=batchrun+(i_batch+1)*depth
         print("Iter: ", i_batch, "Current ave loss: ", totalloss/(batchrun),  "ce loss: ", celoss.item())
     elapsedtime=time.time()-starttime
     print("Epoch: ", epoch+epochstart, " Loss Average: " , totalloss/(batchrun), " Time Taken: ", elapsedtime) 
     if epoch%5==0:
         with torch.no_grad():
-            #mean_dice, mean_hd95, mean_iou, mean_precision, mean_recall=metric_eval_fcnn_isles2018(model, tstloader, norm=False, device=device, num_classes=num_classes)
             mean_dice, mean_hd95, mean_iou, mean_precision, mean_recall=metric_eval_3dunet_isles2018(model, tstloader, norm=False, device=device, num_classes=num_classes)
-            #mean_dice, mean_hd95, mean_iou, mean_precision, mean_recall=metric_eval(model, tstloader, norm=False, device=device, num_classes=num_classes)
         original_stdout =sys.stdout
         print('Validation : mean_dice : %f mean_hd95 : %f mean_iou : %f mean_precision : %f mean_recall : %f' % (mean_dice, mean_hd95, mean_iou, mean_precision, mean_recall))
         if current_dice<mean_dice:

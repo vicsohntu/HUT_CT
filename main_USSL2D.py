@@ -67,7 +67,7 @@ def znormalize(data, mean, std):
     norm_data = (data - mean) / std
     return norm_data.float()
 lr = 3e-4 
-weight_decay=1e-7
+weight_decay=0.
 gamma = 0.7
 seed = 12345
 seed_everything(seed)
@@ -153,8 +153,8 @@ for epoch in range(epochs):
             print("Writing ... ")
             cnt=0
             current_dice=mean_dice
-            torch.save(model.state_dict(), 'results/USSLNet_model9.pt')
-            f=open("results/USSLNet_model9.txt", "a") 
+            torch.save(model.state_dict(), 'results/USSLNet.pt')
+            f=open("results/USSLNet.txt", "a") 
             f.write('Validation epoch %d : mean_dice : %f mean_hd95 : %f mean_iou : %f mean_precision : %f mean_recall : %f \n' % (epoch, mean_dice, mean_hd95, mean_iou, mean_precision, mean_recall))
             f.close()
         elif cnt<autostop:
